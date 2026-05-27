@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f1117" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="HorasExtra" />
+  <title>HorasExtra</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0b0d12;
+      --surface: #13161f;
+      --surface2: #1c2030;
+      --border: #252a3a;
+      --accent: #f5c842;
+      --accent2: #42c8f5;
+      --danger: #f55a42;
+      --success: #42f5a0;
+      --text: #e8eaf0;
+      --text-muted: #6b7280;
+      --text-dim: #3d4457;
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.5;
+    }
+
+    .app-header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(11,13,18,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .app-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -0.5px; }
+    .app-title span { color: var(--accent); }
+
+    .year-badge {
+      font-size: 11px; color: var(--text-muted);
+      background: var(--surface2); border: 1px solid var(--border);
+      padding: 4px 10px; border-radius: 20px; letter-spacing: 1px;
+    }
+
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(11,13,18,0.95);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    }
+
+    .nav-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 8px; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); font-family: 'DM Mono', monospace;
+      font-size: 10px; letter-spacing: 0.5px; transition: color 0.2s;
+    }
+    .nav-btn.active { color: var(--accent); }
+    .nav-btn svg { width: 22px; height: 22px; }
+
+    .main {
+      padding: 20px 16px 100px;
+      max-width: 480px; margin: 0 auto;
+      animation: fadeUp 0.4s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px;
+      letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 16px;
+    }
+
+    /* SALDO HERO */
+    .saldo-hero {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 20px 20px;
+      margin-bottom: 16px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .saldo-hero::before {
+      content: '';
+      position: absolute;
+      top: -40px; left: 50%; transform: translateX(-50%);
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(245,200,66,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .saldo-label {
+      font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 8px;
+    }
+    .saldo-number {
+      font-family: 'Syne', sans-serif; font-weight: 800; font-size: 52px;
+      line-height: 1; color: var(--accent);
+    }
+    .saldo-number.negative { color: var(--danger); }
+    .saldo-number sup { font-size: 22px; font-weight: 600; vertical-align: super; }
+    .saldo-sub { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+
+    .saldo-row {
+      display: flex; gap: 10px; margin-top: 16px;
+    }
+    .saldo-pill {
+      flex: 1; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .saldo-pill-icon { font-size: 14px; }
+    .saldo-pill-info { flex: 1; }
+    .saldo-pill-label { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
+    .saldo-pill-val { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; }
+    .saldo-pill-val.pos { color: var(--success); }
+    .saldo-pill-val.neg { color: var(--danger); }
+
+    /* STATS GRID */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+
+    .stat-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 16px;
+      position: relative; overflow: hidden;
+    }
+    .stat-box::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+    }
+    .stat-box.yellow::after { background: var(--accent); }
+    .stat-box.blue::after { background: var(--accent2); }
+    .stat-box.green::after { background: var(--success); }
+    .stat-box.red::after { background: var(--danger); }
+
+    .stat-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+    .stat-value { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 28px; line-height: 1; }
+    .stat-value.yellow { color: var(--accent); }
+    .stat-value.blue { color: var(--accent2); }
+    .stat-value.green { color: var(--success); }
+    .stat-value.red { color: var(--danger); }
+    .stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+    /* OPCIONES */
+    .opcion-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 16px; margin-bottom: 12px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .opcion-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .opcion-icon.yellow { background: rgba(245,200,66,0.12); }
+    .opcion-icon.green { background: rgba(66,245,160,0.12); }
+    .opcion-info { flex: 1; }
+    .opcion-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+    .opcion-detail { font-size: 11px; color: var(--text-muted); line-height: 1.6; }
+    .opcion-value { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; text-align: right; flex-shrink: 0; }
+    .opcion-value.yellow { color: var(--accent); }
+    .opcion-value.green { color: var(--success); }
+
+    /* FORM */
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+    .form-input {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text);
+      font-family: 'DM Mono', monospace; font-size: 16px;
+      padding: 14px 16px; outline: none; transition: border-color 0.2s;
+      appearance: none; -webkit-appearance: none;
+    }
+    .form-input:focus { border-color: var(--accent); }
+
+    /* TIPO TOGGLE */
+    .tipo-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tipo-btn {
+      flex: 1; padding: 14px 10px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--surface2);
+      color: var(--text-muted); font-family: 'Syne', sans-serif;
+      font-weight: 700; font-size: 13px; cursor: pointer;
+      transition: all 0.2s; text-align: center; line-height: 1.3;
+    }
+    .tipo-btn .tipo-icon { display: block; font-size: 20px; margin-bottom: 4px; }
+    .tipo-btn.active-ganada { border-color: var(--accent); color: var(--accent); background: rgba(245,200,66,0.08); }
+    .tipo-btn.active-disfrute { border-color: var(--accent2); color: var(--accent2); background: rgba(66,200,245,0.08); }
+    .tipo-btn.active-cobro { border-color: var(--success); color: var(--success); background: rgba(66,245,160,0.08); }
+
+    /* GASTO OPTIONS - solo visible cuando tipo=gasto */
+    .gasto-options { display: none; }
+    .gasto-options.visible { display: block; }
+
+    .btn {
+      width: 100%; padding: 16px; border-radius: var(--radius-sm);
+      border: none; font-family: 'Syne', sans-serif; font-weight: 700;
+      font-size: 14px; letter-spacing: 1px; cursor: pointer;
+      transition: all 0.2s; text-transform: uppercase;
+    }
+    .btn-primary { background: var(--accent); color: #0b0d12; }
+    .btn-primary:active { transform: scale(0.97); background: #e5b830; }
+    .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); margin-top: 8px; font-size: 12px; padding: 12px; }
+
+    /* LISTA REGISTROS */
+    .registro-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 10px;
+      display: flex; align-items: center; justify-content: space-between;
+      animation: fadeUp 0.3s ease both;
+    }
+    .registro-item.gasto-disfrute { border-left: 3px solid var(--accent2); }
+    .registro-item.gasto-cobro { border-left: 3px solid var(--success); }
+    .registro-item.ganada { border-left: 3px solid var(--accent); }
+
+    .registro-fecha { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; }
+    .registro-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .registro-tipo-badge {
+      font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+      padding: 2px 7px; border-radius: 20px; margin-top: 4px; display: inline-block;
+    }
+    .badge-ganada { background: rgba(245,200,66,0.12); color: var(--accent); }
+    .badge-disfrute { background: rgba(66,200,245,0.12); color: var(--accent2); }
+    .badge-cobro { background: rgba(66,245,160,0.12); color: var(--success); }
+
+    .registro-horas { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; color: var(--accent); }
+    .registro-horas.gasto { color: var(--danger); }
+    .registro-horas span { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+
+    .delete-btn {
+      background: none; border: none; color: var(--text-dim); cursor: pointer;
+      padding: 8px; border-radius: 8px; transition: color 0.2s; margin-left: 8px;
+    }
+    .delete-btn:active { color: var(--danger); }
+
+    /* FILTRO HISTORIAL */
+    .filtro-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filtro-tab {
+      padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text-muted);
+      font-family: 'DM Mono', monospace; font-size: 11px; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filtro-tab.active { background: var(--accent); color: #0b0d12; border-color: var(--accent); font-weight: 700; }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .empty-state-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+    .empty-state-text { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 16px; color: var(--text-dim); }
+
+    .ajustes-info {
+      font-size: 12px; color: var(--text-muted); line-height: 1.7; margin-bottom: 20px;
+      padding: 14px; background: var(--surface2); border-radius: var(--radius-sm);
+      border-left: 3px solid var(--accent);
+    }
+
+    .toast {
+      position: fixed; bottom: 90px; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--success); color: #0b0d12;
+      font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px;
+      padding: 12px 24px; border-radius: 30px; z-index: 9998;
+      opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .year-selector { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .year-nav {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 16px; flex-shrink: 0; transition: border-color 0.2s;
+    }
+    .year-nav:active { border-color: var(--accent); }
+    .year-display { flex: 1; text-align: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; color: var(--accent); }
+
+    .nota-salario { font-size: 11px; color: var(--text-muted); margin-top: 6px; font-style: italic; }
+
+    .mes-grupo { margin-bottom: 8px; }
+    .mes-header { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); padding: 8px 4px 4px; display: flex; justify-content: space-between; }
+    .mes-header-saldo { font-family: 'Syne', sans-serif; }
+    .mes-header-saldo.pos { color: var(--success); }
+    .mes-header-saldo.neg { color: var(--danger); }
+
+    .install-banner {
+      background: linear-gradient(135deg, rgba(245,200,66,0.1), rgba(66,200,245,0.05));
+      border: 1px solid rgba(245,200,66,0.3); border-radius: var(--radius-sm);
+      padding: 14px 16px; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .install-banner-text { flex: 1; font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+    .install-banner-text strong { color: var(--accent); font-family: 'Syne', sans-serif; }
+    .install-btn-small {
+      background: var(--accent); color: #0b0d12; border: none; border-radius: 8px;
+      padding: 8px 14px; font-family: 'Syne', sans-serif; font-weight: 700;
+      font-size: 12px; cursor: pointer; white-space: nowrap;
+    }
+    .close-banner { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 18px; padding: 0; }
+
+    .section-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-title">horas<span>+</span></div>
+  <div class="year-badge" id="headerYear">2026</div>
+</header>
+
+<div class="install-banner" id="installBanner" style="display:none; margin:16px 16px 0;">
+  <div class="install-banner-text"><strong>📲 Instalar app</strong><br>Añade HorasExtra a tu pantalla de inicio</div>
+  <button class="install-btn-small" id="installBtn">Instalar</button>
+  <button class="close-banner" id="closeBanner">×</button>
+</div>
+
+<main class="main">
+
+  <!-- RESUMEN -->
+  <div class="screen active" id="screen-resumen">
+    <div class="year-selector">
+      <button class="year-nav" id="prevYear">‹</button>
+      <div class="year-display" id="yearDisplay">2026</div>
+      <button class="year-nav" id="nextYear">›</button>
+    </div>
+
+    <!-- SALDO HERO -->
+    <div class="saldo-hero">
+      <div class="saldo-label">Saldo disponible</div>
+      <div class="saldo-number" id="saldoHero">0<sup>h</sup></div>
+      <div class="saldo-sub" id="saldoSub">horas extra netas</div>
+      <div class="saldo-row">
+        <div class="saldo-pill">
+          <div class="saldo-pill-icon">📈</div>
+          <div class="saldo-pill-info">
+            <div class="saldo-pill-label">Ganadas</div>
+            <div class="saldo-pill-val pos" id="pillGanadas">0h</div>
+          </div>
+        </div>
+        <div class="saldo-pill">
+          <div class="saldo-pill-icon">📉</div>
+          <div class="saldo-pill-info">
+            <div class="saldo-pill-label">Gastadas</div>
+            <div class="saldo-pill-val neg" id="pillGastadas">0h</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="section-title">Si usas el saldo disponible</p>
+
+    <div class="opcion-card">
+      <div class="opcion-icon yellow">🏖️</div>
+      <div class="opcion-info">
+        <div class="opcion-title">Días libres</div>
+        <div class="opcion-detail" id="detalleDias">—</div>
+      </div>
+      <div class="opcion-value yellow" id="totalDias">0d 0h</div>
+    </div>
+
+    <div class="opcion-card">
+      <div class="opcion-icon green">💰</div>
+      <div class="opcion-info">
+        <div class="opcion-title">Cobro en nómina</div>
+        <div class="opcion-detail" id="detalleCobro">—</div>
+      </div>
+      <div class="opcion-value green" id="totalCobro">—</div>
+    </div>
+
+    <div id="sinSalarioNota" class="nota-salario" style="display:none;">
+      💡 Configura tu salario/hora en Ajustes para ver el importe a cobrar
+    </div>
+  </div>
+
+  <!-- REGISTRAR -->
+  <div class="screen" id="screen-registrar">
+    <div class="card">
+      <div class="card-title">Tipo de movimiento</div>
+      <div class="tipo-toggle">
+        <button class="tipo-btn active-ganada" id="tipoGanada" onclick="setTipo('ganada')">
+          <span class="tipo-icon">📈</span>Horas<br>ganadas
+        </button>
+        <button class="tipo-btn" id="tipoDisfrute" onclick="setTipo('disfrute')">
+          <span class="tipo-icon">🏖️</span>Disfrute<br>de días
+        </button>
+        <button class="tipo-btn" id="tipoCobro" onclick="setTipo('cobro')">
+          <span class="tipo-icon">💰</span>Cobro en<br>nómina
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" id="formCardTitle">Nueva entrada</div>
+
+      <div class="form-group">
+        <label class="form-label" for="inputFecha">Fecha</label>
+        <input type="date" class="form-input" id="inputFecha" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="inputHoras" id="labelHoras">Horas extra trabajadas</label>
+        <input type="number" class="form-input" id="inputHoras" min="0.5" max="24" step="0.5" placeholder="Ej: 2.5" />
+      </div>
+
+      <div class="form-group gasto-options" id="gastoOptions">
+        <label class="form-label">¿Cómo se disfrutaron?</label>
+        <div style="font-size:12px; color:var(--text-muted); padding:10px 14px; background:var(--surface2); border-radius:var(--radius-sm); line-height:1.6;" id="gastoExplain"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="inputNota">Nota (opcional)</label>
+        <input type="text" class="form-input" id="inputNota" placeholder="Ej: Reunión urgente" maxlength="60" />
+      </div>
+
+      <button class="btn btn-primary" id="btnGuardar">Guardar registro</button>
+    </div>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div class="screen" id="screen-historial">
+    <div class="year-selector">
+      <button class="year-nav" id="prevYearH">‹</button>
+      <div class="year-display" id="yearDisplayH">2026</div>
+      <button class="year-nav" id="nextYearH">›</button>
+    </div>
+
+    <div class="filtro-tabs">
+      <button class="filtro-tab active" data-filtro="todos">Todos</button>
+      <button class="filtro-tab" data-filtro="ganada">📈 Ganadas</button>
+      <button class="filtro-tab" data-filtro="disfrute">🏖️ Disfrute</button>
+      <button class="filtro-tab" data-filtro="cobro">💰 Cobro</button>
+    </div>
+
+    <div id="listaRegistros"></div>
+  </div>
+
+  <!-- AJUSTES -->
+  <div class="screen" id="screen-ajustes">
+    <div class="card">
+      <div class="card-title">Cálculo</div>
+      <div class="ajustes-info">
+        Por cada hora extra, la empresa aplica un multiplicador de <strong>× 1,75</strong>.<br><br>
+        📈 <strong>Ganadas:</strong> introduces horas reales trabajadas. Se multiplican × 1,75 para formar el bote.<br>
+        🏖️ <strong>Disfrute:</strong> introduces horas del bote gastadas (8h = 1 día libre).<br>
+        💰 <strong>Cobro:</strong> introduces horas reales cobradas. Se descuentan del bote como horas × 1,75.<br><br>
+        El <strong>saldo</strong> es el bote multiplicado menos lo ya gastado.
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="inputSalario">Tu salario por hora (€)</label>
+        <input type="number" class="form-input" id="inputSalario" min="0" step="0.01" placeholder="Ej: 15.50" />
+      </div>
+      <button class="btn btn-primary" id="btnGuardarAjustes">Guardar ajustes</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Datos</div>
+      <p style="font-size:12px; color:var(--text-muted); line-height:1.7; margin-bottom:16px;">
+        Todos los datos se guardan localmente en tu dispositivo. No se envía nada a ningún servidor.
+      </p>
+      <button class="btn btn-danger" id="btnBorrarTodo">🗑 Borrar todos los registros</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Acerca de</div>
+      <p style="font-size:12px; color:var(--text-muted); line-height:1.8;">
+        horas<strong style="color:var(--accent)">+</strong> v2.0<br>
+        Control de horas extra personal<br>
+        <span style="color:var(--text-dim)">Datos solo en este dispositivo</span>
+      </p>
+    </div>
+  </div>
+
+</main>
+
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-screen="resumen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+    </svg>
+    Resumen
+  </button>
+  <button class="nav-btn" data-screen="registrar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+    </svg>
+    Registrar
+  </button>
+  <button class="nav-btn" data-screen="historial">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/>
+    </svg>
+    Historial
+  </button>
+  <button class="nav-btn" data-screen="ajustes">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+    Ajustes
+  </button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// =====================
+// ESTADO
+// =====================
+let currentYear = new Date().getFullYear();
+let historialYear = new Date().getFullYear();
+let filtroActivo = 'todos';
+let tipoActivo = 'ganada'; // 'ganada' | 'disfrute' | 'cobro'
+
+let state = { registros: [], salarioHora: null };
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem('horasExtra_v2');
+    if (saved) state = JSON.parse(saved);
+    // migrar v1
+    const v1 = localStorage.getItem('horasExtra_v1');
+    if (v1 && !saved) {
+      const old = JSON.parse(v1);
+      if (old.registros) {
+        state.registros = old.registros.map(r => ({ ...r, tipo: 'ganada' }));
+        state.salarioHora = old.salarioHora || null;
+        saveState();
+      }
+    }
+  } catch(e) {}
+}
+
+function saveState() {
+  localStorage.setItem('horasExtra_v2', JSON.stringify(state));
+}
+
+loadState();
+
+// =====================
+// NAVEGACIÓN
+// =====================
+const screens = document.querySelectorAll('.screen');
+const navBtns = document.querySelectorAll('.nav-btn');
+
+function goTo(name) {
+  screens.forEach(s => s.classList.remove('active'));
+  navBtns.forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.querySelector('[data-screen="' + name + '"]').classList.add('active');
+  if (name === 'resumen') renderResumen();
+  if (name === 'historial') renderHistorial();
+  if (name === 'ajustes') renderAjustes();
+  if (name === 'registrar') initRegistrar();
+  window.scrollTo(0, 0);
+}
+
+navBtns.forEach(btn => btn.addEventListener('click', () => goTo(btn.dataset.screen)));
+
+// =====================
+// UTILS
+// =====================
+function showToast(msg, color) {
+  color = color || 'var(--success)';
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color;
+  t.style.color = color === 'var(--success)' ? '#0b0d12' : '#fff';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function fh(n) { return (n % 1 === 0 ? n : parseFloat(n.toFixed(2))).toString(); }
+
+function formatFechaLarga(iso) {
+  const parts = iso.split('-');
+  const y = parseInt(parts[0]), m = parseInt(parts[1]), d = parseInt(parts[2]);
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const fecha = new Date(y, m-1, d);
+  return dias[fecha.getDay()] + ' ' + d + ' de ' + meses[m-1];
+}
+
+function getByYear(year) {
+  return state.registros.filter(r => r.fecha.startsWith(year + ''));
+}
+
+function calcularSaldo(registros) {
+  // Horas reales trabajadas de más
+  const ganadas = registros.filter(r => r.tipo === 'ganada').reduce((s, r) => s + r.horas, 0);
+
+  // Bote total multiplicado (lo que tengo disponible para disfrutar)
+  const boteMulti = ganadas * 1.75;
+
+  // DISFRUTE: el usuario introduce horas del bote multiplicado (ej: 8h = 1 día)
+  const horasDisfrutadas = registros.filter(r => r.tipo === 'disfrute').reduce((s, r) => s + r.horas, 0);
+
+  // COBRO: el usuario introduce horas reales cobradas; se descuentan del bote como horas×1.75
+  const horasCobradas = registros.filter(r => r.tipo === 'cobro').reduce((s, r) => s + r.horas, 0);
+  const boteDescontadoPorCobro = horasCobradas * 1.75;
+
+  // Saldo del bote multiplicado disponible
+  const saldoBote = boteMulti - horasDisfrutadas - boteDescontadoPorCobro;
+
+  const diasCompletos = saldoBote >= 0 ? Math.floor(saldoBote / 8) : 0;
+  const horasSueltas = saldoBote >= 0 ? saldoBote % 8 : 0;
+
+  // Para mostrar en las píldoras: gastadas en equivalente de bote
+  const gastadosBote = horasDisfrutadas + boteDescontadoPorCobro;
+
+  // Cobro en € sobre el saldo restante del bote
+  const cobro = state.salarioHora && saldoBote >= 0 ? saldoBote * state.salarioHora : null;
+
+  return { ganadas, boteMulti, horasDisfrutadas, horasCobradas, gastadosBote, saldoBote, diasCompletos, horasSueltas, cobro };
+}
+
+// =====================
+// RESUMEN
+// =====================
+function renderResumen() {
+  document.getElementById('yearDisplay').textContent = currentYear;
+  document.getElementById('headerYear').textContent = currentYear;
+  const regs = getByYear(currentYear);
+  const { ganadas, boteMulti, gastadosBote, saldoBote, diasCompletos, horasSueltas, cobro } = calcularSaldo(regs);
+
+  const heroEl = document.getElementById('saldoHero');
+  heroEl.innerHTML = fh(Math.abs(saldoBote)) + '<sup>h</sup>';
+  heroEl.className = 'saldo-number' + (saldoBote < 0 ? ' negative' : '');
+  document.getElementById('saldoSub').textContent = saldoBote < 0 ? '⚠️ Saldo negativo' : 'horas del bote disponibles';
+
+  // Píldoras: bote total generado vs gastado del bote
+  document.getElementById('pillGanadas').textContent = fh(boteMulti) + 'h';
+  document.getElementById('pillGastadas').textContent = fh(gastadosBote) + 'h';
+
+  // Opciones (sobre saldo disponible del bote)
+  if (saldoBote <= 0) {
+    document.getElementById('totalDias').textContent = '0d 0h';
+    document.getElementById('detalleDias').textContent = saldoBote < 0 ? 'Saldo negativo' : 'Sin horas disponibles';
+    document.getElementById('totalCobro').textContent = '—';
+    document.getElementById('detalleCobro').textContent = 'Sin saldo disponible';
+    document.getElementById('sinSalarioNota').style.display = 'none';
+  } else {
+    document.getElementById('totalDias').textContent = diasCompletos + 'd ' + fh(horasSueltas) + 'h';
+    document.getElementById('detalleDias').textContent =
+      fh(saldoBote) + 'h disponibles → ' + diasCompletos + ' día' + (diasCompletos !== 1 ? 's' : '') + ' + ' + fh(horasSueltas) + 'h';
+
+    if (cobro !== null) {
+      document.getElementById('totalCobro').textContent = cobro.toFixed(2) + ' €';
+      document.getElementById('detalleCobro').textContent = fh(saldoBote) + 'h × ' + state.salarioHora + '€/h';
+      document.getElementById('sinSalarioNota').style.display = 'none';
+    } else {
+      document.getElementById('totalCobro').textContent = '—';
+      document.getElementById('detalleCobro').textContent = 'Configura tu salario/hora';
+      document.getElementById('sinSalarioNota').style.display = 'block';
+    }
+  }
+}
+
+document.getElementById('prevYear').addEventListener('click', function() { currentYear--; renderResumen(); });
+document.getElementById('nextYear').addEventListener('click', function() { currentYear++; renderResumen(); });
+
+// =====================
+// REGISTRAR
+// =====================
+function setTipo(tipo) {
+  tipoActivo = tipo;
+  document.getElementById('tipoGanada').className = 'tipo-btn' + (tipo === 'ganada' ? ' active-ganada' : '');
+  document.getElementById('tipoDisfrute').className = 'tipo-btn' + (tipo === 'disfrute' ? ' active-disfrute' : '');
+  document.getElementById('tipoCobro').className = 'tipo-btn' + (tipo === 'cobro' ? ' active-cobro' : '');
+
+  const gastoOpts = document.getElementById('gastoOptions');
+  const labelHoras = document.getElementById('labelHoras');
+  const formTitle = document.getElementById('formCardTitle');
+
+  if (tipo === 'ganada') {
+    gastoOpts.className = 'form-group gasto-options';
+    labelHoras.textContent = 'Horas extra trabajadas';
+    formTitle.textContent = 'Nueva entrada';
+  } else if (tipo === 'disfrute') {
+    gastoOpts.className = 'form-group gasto-options visible';
+    document.getElementById('gastoExplain').textContent = '🏖️ Introduce las horas del bote que disfrutas. Cada día libre completo = 8h del bote. Ej: 1 día libre → 8h.';
+    labelHoras.textContent = 'Horas del bote disfrutadas';
+    formTitle.textContent = 'Nuevo gasto — Disfrute';
+  } else {
+    gastoOpts.className = 'form-group gasto-options visible';
+    document.getElementById('gastoExplain').textContent = '💰 Introduce las horas reales que te van a pagar. La empresa te abonará esas horas × 1,75 en nómina.';
+    labelHoras.textContent = 'Horas reales cobradas';
+    formTitle.textContent = 'Nuevo gasto — Cobro';
+  }
+}
+
+function initRegistrar() {
+  const hoy = new Date().toISOString().split('T')[0];
+  document.getElementById('inputFecha').value = hoy;
+  document.getElementById('inputHoras').value = '';
+  document.getElementById('inputNota').value = '';
+  setTipo(tipoActivo);
+}
+
+document.getElementById('btnGuardar').addEventListener('click', function() {
+  const fecha = document.getElementById('inputFecha').value;
+  const horas = parseFloat(document.getElementById('inputHoras').value);
+  const nota = document.getElementById('inputNota').value.trim();
+
+  if (!fecha) return showToast('Selecciona una fecha', 'var(--danger)');
+  if (!horas || horas <= 0) return showToast('Introduce las horas', 'var(--danger)');
+
+  state.registros.push({
+    id: Date.now(),
+    fecha: fecha,
+    horas: horas,
+    nota: nota,
+    tipo: tipoActivo  // 'ganada' | 'disfrute' | 'cobro'
+  });
+
+  state.registros.sort(function(a, b) { return b.fecha.localeCompare(a.fecha); });
+  saveState();
+
+  const msgs = { ganada: '✓ Horas extra guardadas', disfrute: '✓ Disfrute registrado', cobro: '✓ Cobro registrado' };
+  showToast(msgs[tipoActivo]);
+  document.getElementById('inputHoras').value = '';
+  document.getElementById('inputNota').value = '';
+});
+
+// =====================
+// HISTORIAL
+// =====================
+document.querySelectorAll('.filtro-tab').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.filtro-tab').forEach(function(t) { t.classList.remove('active'); });
+    tab.classList.add('active');
+    filtroActivo = tab.dataset.filtro;
+    renderHistorial();
+  });
+});
+
+function renderHistorial() {
+  document.getElementById('yearDisplayH').textContent = historialYear;
+  let regs = getByYear(historialYear);
+  if (filtroActivo !== 'todos') regs = regs.filter(function(r) { return r.tipo === filtroActivo; });
+
+  const lista = document.getElementById('listaRegistros');
+
+  if (regs.length === 0) {
+    lista.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">Sin registros en ' + historialYear + '</div></div>';
+    return;
+  }
+
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const porMes = {};
+  regs.forEach(function(r) {
+    const m = r.fecha.substring(5, 7);
+    if (!porMes[m]) porMes[m] = [];
+    porMes[m].push(r);
+  });
+
+  const badgeMap = { ganada: 'badge-ganada', disfrute: 'badge-disfrute', cobro: 'badge-cobro' };
+  const labelMap = { ganada: '📈 ganada', disfrute: '🏖️ disfrute', cobro: '💰 cobro' };
+
+  let html = '';
+  Object.keys(porMes).sort(function(a,b) { return b.localeCompare(a); }).forEach(function(m) {
+    const ganMes = porMes[m].filter(function(r){ return r.tipo==='ganada'; }).reduce(function(s,r){ return s+r.horas; }, 0);
+    const gasMes = porMes[m].filter(function(r){ return r.tipo!=='ganada'; }).reduce(function(s,r){ return s+r.horas; }, 0);
+    const saldoMes = ganMes - gasMes;
+    html += '<div class="mes-grupo"><div class="mes-header"><span>' + meses[parseInt(m)-1] + '</span><span class="mes-header-saldo ' + (saldoMes >= 0 ? 'pos' : 'neg') + '">' + (saldoMes >= 0 ? '+' : '') + fh(saldoMes) + 'h</span></div>';
+    porMes[m].forEach(function(r) {
+      const esGasto = r.tipo !== 'ganada';
+      html += '<div class="registro-item ' + (esGasto ? 'gasto-' + r.tipo : 'ganada') + '">'
+        + '<div>'
+        + '<div class="registro-fecha">' + formatFechaLarga(r.fecha) + '</div>'
+        + '<span class="registro-tipo-badge ' + badgeMap[r.tipo] + '">' + labelMap[r.tipo] + '</span>'
+        + (r.nota ? '<div class="registro-meta">' + r.nota + '</div>' : '')
+        + '</div>'
+        + '<div style="display:flex;align-items:center">'
+        + '<div class="registro-horas' + (esGasto ? ' gasto' : '') + '">' + (esGasto ? '−' : '+') + fh(r.horas) + '<span>h</span></div>'
+        + '<button class="delete-btn" data-id="' + r.id + '">'
+        + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>'
+        + '</button></div></div>';
+    });
+    html += '</div>';
+  });
+
+  lista.innerHTML = html;
+
+  lista.querySelectorAll('.delete-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const id = parseInt(btn.dataset.id);
+      if (confirm('¿Eliminar este registro?')) {
+        state.registros = state.registros.filter(function(r) { return r.id !== id; });
+        saveState();
+        renderHistorial();
+        showToast('Registro eliminado', 'var(--danger)');
+      }
+    });
+  });
+}
+
+document.getElementById('prevYearH').addEventListener('click', function() { historialYear--; renderHistorial(); });
+document.getElementById('nextYearH').addEventListener('click', function() { historialYear++; renderHistorial(); });
+
+// =====================
+// AJUSTES
+// =====================
+function renderAjustes() {
+  if (state.salarioHora) document.getElementById('inputSalario').value = state.salarioHora;
+}
+
+document.getElementById('btnGuardarAjustes').addEventListener('click', function() {
+  const val = parseFloat(document.getElementById('inputSalario').value);
+  state.salarioHora = (val && val > 0) ? val : null;
+  saveState();
+  showToast('✓ Ajustes guardados');
+});
+
+document.getElementById('btnBorrarTodo').addEventListener('click', function() {
+  if (confirm('¿Borrar TODOS los registros? Esta acción no se puede deshacer.')) {
+    state.registros = [];
+    saveState();
+    showToast('Registros eliminados', 'var(--danger)');
+  }
+});
+
+// =====================
+// PWA INSTALL
+// =====================
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredPrompt = e;
+  const banner = document.getElementById('installBanner');
+  if (!localStorage.getItem('installBannerClosed')) banner.style.display = 'flex';
+});
+document.getElementById('installBtn').addEventListener('click', async function() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('installBanner').style.display = 'none';
+  }
+});
+document.getElementById('closeBanner').addEventListener('click', function() {
+  document.getElementById('installBanner').style.display = 'none';
+  localStorage.setItem('installBannerClosed', '1');
+});
+
+// =====================
+// INIT
+// =====================
+renderResumen();
+initRegistrar();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+</script>
+</body>
+</html>
