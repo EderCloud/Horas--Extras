@@ -621,32 +621,31 @@ function getByYear(year) {
 }
 
 function calcularSaldo(registros) {
-  // Horas reales trabajadas de más
+  // Horas extras anotadas en bruto (sin multiplicar)
   const ganadas = registros.filter(r => r.tipo === 'ganada').reduce((s, r) => s + r.horas, 0);
 
-  // Bote total multiplicado (lo que tengo disponible para disfrutar)
-  const boteMulti = ganadas * 1.75;
+  // DISFRUTE: usuario introduce horas del bote → se desmultiplican ÷1.75 para descontar del saldo real
+  const horasDisfrutadasBote = registros.filter(r => r.tipo === 'disfrute').reduce((s, r) => s + r.horas, 0);
+  const descuentoDisfrute = horasDisfrutadasBote / 1.75;
 
-  // DISFRUTE: el usuario introduce horas del bote multiplicado (ej: 8h = 1 día)
-  const horasDisfrutadas = registros.filter(r => r.tipo === 'disfrute').reduce((s, r) => s + r.horas, 0);
-
-  // COBRO: el usuario introduce horas reales cobradas; se descuentan del bote como horas×1.75
+  // COBRO: usuario introduce horas reales → se descuentan directamente del saldo
   const horasCobradas = registros.filter(r => r.tipo === 'cobro').reduce((s, r) => s + r.horas, 0);
-  const boteDescontadoPorCobro = horasCobradas * 1.75;
 
-  // Saldo del bote multiplicado disponible
-  const saldoBote = boteMulti - horasDisfrutadas - boteDescontadoPorCobro;
+  // Total descontado del saldo en horas reales
+  const totalGastado = descuentoDisfrute + horasCobradas;
 
-  const diasCompletos = saldoBote >= 0 ? Math.floor(saldoBote / 8) : 0;
-  const horasSueltas = saldoBote >= 0 ? saldoBote % 8 : 0;
+  // Saldo disponible en horas reales
+  const saldo = ganadas - totalGastado;
 
-  // Para mostrar en las píldoras: gastadas en equivalente de bote
-  const gastadosBote = horasDisfrutadas + boteDescontadoPorCobro;
+  // Bote multiplicado disponible (para calcular días y cobro)
+  const saldoBote = saldo * 1.75;
+  const diasCompletos = saldo >= 0 ? Math.floor(saldoBote / 8) : 0;
+  const horasSueltas = saldo >= 0 ? saldoBote % 8 : 0;
 
-  // Cobro en € sobre el saldo restante del bote
-  const cobro = state.salarioHora && saldoBote >= 0 ? saldoBote * state.salarioHora : null;
+  // Cobro en € sobre el saldo multiplicado
+  const cobro = state.salarioHora && saldo >= 0 ? saldoBote * state.salarioHora : null;
 
-  return { ganadas, boteMulti, horasDisfrutadas, horasCobradas, gastadosBote, saldoBote, diasCompletos, horasSueltas, cobro };
+  return { ganadas, totalGastado, saldo, saldoBote, diasCompletos, horasSueltas, cobro };
 }
 
 // =====================
@@ -656,32 +655,33 @@ function renderResumen() {
   document.getElementById('yearDisplay').textContent = currentYear;
   document.getElementById('headerYear').textContent = currentYear;
   const regs = getByYear(currentYear);
-  const { ganadas, boteMulti, gastadosBote, saldoBote, diasCompletos, horasSueltas, cobro } = calcularSaldo(regs);
+  const { ganadas, totalGastado, saldo, saldoBote, diasCompletos, horasSueltas, cobro } = calcularSaldo(regs);
 
+  // Número grande: saldo en horas reales (ganadas - gastadas desmultiplicadas)
   const heroEl = document.getElementById('saldoHero');
-  heroEl.innerHTML = fh(Math.abs(saldoBote)) + '<sup>h</sup>';
-  heroEl.className = 'saldo-number' + (saldoBote < 0 ? ' negative' : '');
-  document.getElementById('saldoSub').textContent = saldoBote < 0 ? '⚠️ Saldo negativo' : 'horas del bote disponibles';
+  heroEl.innerHTML = fh(Math.abs(saldo)) + '<sup>h</sup>';
+  heroEl.className = 'saldo-number' + (saldo < 0 ? ' negative' : '');
+  document.getElementById('saldoSub').textContent = saldo < 0 ? '⚠️ Saldo negativo' : 'horas extras disponibles';
 
-  // Píldoras: bote total generado vs gastado del bote
-  document.getElementById('pillGanadas').textContent = fh(boteMulti) + 'h';
-  document.getElementById('pillGastadas').textContent = fh(gastadosBote) + 'h';
+  // Píldoras: horas anotadas en bruto vs horas reales descontadas
+  document.getElementById('pillGanadas').textContent = fh(ganadas) + 'h';
+  document.getElementById('pillGastadas').textContent = fh(totalGastado) + 'h';
 
-  // Opciones (sobre saldo disponible del bote)
-  if (saldoBote <= 0) {
+  // Opciones (calculadas sobre saldo × 1,75)
+  if (saldo <= 0) {
     document.getElementById('totalDias').textContent = '0d 0h';
-    document.getElementById('detalleDias').textContent = saldoBote < 0 ? 'Saldo negativo' : 'Sin horas disponibles';
+    document.getElementById('detalleDias').textContent = saldo < 0 ? 'Saldo negativo' : 'Sin horas disponibles';
     document.getElementById('totalCobro').textContent = '—';
     document.getElementById('detalleCobro').textContent = 'Sin saldo disponible';
     document.getElementById('sinSalarioNota').style.display = 'none';
   } else {
     document.getElementById('totalDias').textContent = diasCompletos + 'd ' + fh(horasSueltas) + 'h';
     document.getElementById('detalleDias').textContent =
-      fh(saldoBote) + 'h disponibles → ' + diasCompletos + ' día' + (diasCompletos !== 1 ? 's' : '') + ' + ' + fh(horasSueltas) + 'h';
+      fh(saldo) + 'h × 1,75 = ' + fh(saldoBote) + 'h → ' + diasCompletos + ' día' + (diasCompletos !== 1 ? 's' : '') + ' + ' + fh(horasSueltas) + 'h';
 
     if (cobro !== null) {
       document.getElementById('totalCobro').textContent = cobro.toFixed(2) + ' €';
-      document.getElementById('detalleCobro').textContent = fh(saldoBote) + 'h × ' + state.salarioHora + '€/h';
+      document.getElementById('detalleCobro').textContent = fh(saldo) + 'h × 1,75 × ' + state.salarioHora + '€/h';
       document.getElementById('sinSalarioNota').style.display = 'none';
     } else {
       document.getElementById('totalCobro').textContent = '—';
