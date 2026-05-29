@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "io.github.edercloud.twa",
+    "sha256_cert_fingerprints": ["48:5E:F1:09:11:EC:BD:A5:26:95:71:31:DB:3E:67:E9:93:B0:8C:46:E8:F3:89:23:0C:99:B2:BD:4E:69:3D:80"]
+  }
+}]
